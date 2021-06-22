@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <style>body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  /* do not increase min-width as some may use split screens */
+  min-width: 800px;
+  color: #999;
+}
+
+h1 {
+  font-size: 24px;
+  color: black;
+}
+
+h2 {
+  font-size: 16px;
+  color: black;
+}
+
+p {
+  color: black;
+}
+
+a {
+  color: #999;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/******************************
+ * SUMMARY INFORMATION
+ ******************************/
+#environment td {
+  padding: 5px;
+  border: 1px solid #E6E6E6;
+}
+#environment tr:nth-child(odd) {
+  background-color: #f6f6f6;
+}
+
+/******************************
+ * TEST RESULT COLORS
+ ******************************/
+span.passed,
+.passed .col-result {
+  color: green;
+}
+
+span.skipped,
+span.xfailed,
+span.rerun,
+.skipped .col-result,
+.xfailed .col-result,
+.rerun .col-result {
+  color: orange;
+}
+
+span.error,
+span.failed,
+span.xpassed,
+.error .col-result,
+.failed .col-result,
+.xpassed .col-result {
+  color: red;
+}
+
+/******************************
+ * RESULTS TABLE
+ *
+ * 1. Table Layout
+ * 2. Extra
+ * 3. Sorting items
+ *
+ ******************************/
+/*------------------
+ * 1. Table Layout
+ *------------------*/
+#results-table {
+  border: 1px solid #e6e6e6;
+  color: #999;
+  font-size: 12px;
+  width: 100%;
+}
+#results-table th,
+#results-table td {
+  padding: 5px;
+  border: 1px solid #E6E6E6;
+  text-align: left;
+}
+#results-table th {
+  font-weight: bold;
+}
+
+/*------------------
+ * 2. Extra
+ *------------------*/
+.log {
+  background-color: #e6e6e6;
+  border: 1px solid #e6e6e6;
+  color: black;
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  height: 230px;
+  overflow-y: scroll;
+  padding: 5px;
+  white-space: pre-wrap;
+}
+.log:only-child {
+  height: inherit;
+}
+
+div.image {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin-left: 5px;
+  overflow: hidden;
+  width: 320px;
+}
+div.image img {
+  width: 320px;
+}
+
+div.video {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin-left: 5px;
+  overflow: hidden;
+  width: 320px;
+}
+div.video video {
+  overflow: hidden;
+  width: 320px;
+  height: 240px;
+}
+
+.collapsed {
+  display: none;
+}
+
+.expander::after {
+  content: " (show details)";
+  color: #BBB;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.collapser::after {
+  content: " (hide details)";
+  color: #BBB;
+  font-style: italic;
+  cursor: pointer;
+}
+
+/*------------------
+ * 3. Sorting items
+ *------------------*/
+.sortable {
+  cursor: pointer;
+}
+
+.sort-icon {
+  font-size: 0px;
+  float: left;
+  margin-right: 5px;
+  margin-top: 5px;
+  /*triangle*/
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+}
+.inactive .sort-icon {
+  /*finish triangle*/
+  border-top: 8px solid #E6E6E6;
+}
+.asc.active .sort-icon {
+  /*finish triangle*/
+  border-bottom: 8px solid #999;
+}
+.desc.active .sort-icon {
+  /*finish triangle*/
+  border-top: 8px solid #999;
+}
+</style></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 21-Jun-2021 at 21:10:12 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>JAVA_HOME</td>
+        <td>C:\Program Files\Java\jdk1.8.0_171</td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "0.13.1", "py": "1.10.0", "pytest": "6.2.4"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Windows-10-10.0.19041-SP0</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"forked": "1.3.0", "html": "3.1.1", "metadata": "1.11.0", "xdist": "2.3.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.8.5</td></tr></table>
+    <h2>Summary</h2>
+    <p>23 tests ran in 85.03 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">22 passed</span>, <input checked="true" class="filter" data-test-result="skipped" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">2 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">1 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="xfailed results-table-row">
+        <tr>
+          <td class="col-result">XFailed</td>
+          <td class="col-name">test_search_results.py::TestSearchResults::test_item_names_or_descriptions_contain_the_searched_term[dress]</td>
+          <td class="col-duration">8.29</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/><br/>self = &lt;test_search_results.TestSearchResults object at 0x0441BE38&gt;<br/>to_be_searched = &#x27;dress&#x27;<br/><br/>    @pytest.mark.parametrize(&quot;to_be_searched&quot;, [&quot;top&quot;,<br/>                                                &quot;shirt&quot;,<br/>                                                pytest.param(&quot;dress&quot;, marks=pytest.mark.xfail(<br/>                                                    reason=&quot;dress is expected to fail this test because the system &quot;<br/>                                                           &quot;counts Faded Short Sleeve T-shirts and Blouse as a dress &quot;<br/>                                                           &quot;for some reason&quot;))<br/>                                                ])<br/>    def test_item_names_or_descriptions_contain_the_searched_term(self, to_be_searched):<br/>        driver = self.driver<br/>        self.search_text_from_home_page(driver, to_be_searched)<br/>    <br/>        switch_to_list_view(driver)<br/>    <br/>        # Find all the product names and product descriptions<br/>        product_name_el_list = driver.find_elements(By.CSS_SELECTOR, &quot;#center_column a.product-name&quot;)<br/>        product_desc_el_list = driver.find_elements(By.CSS_SELECTOR, &quot;#center_column p.product-desc&quot;)<br/>    <br/>        # Loop through the product names and descriptions and see if the string that was entered in the search bar is<br/>        # in EITHER of them. Bc if the product name has the string and the description doesn&#x27;t have it or vice versa,<br/>        # that&#x27;s okay since the product as a whole has the string somewhere.<br/>        for name, desc in zip(product_name_el_list, product_desc_el_list):<br/>            name_text = name.text.lower()<br/>            desc_text = desc.text.lower()<br/>&gt;           assert to_be_searched.lower() in name_text or to_be_searched.lower() in desc_text, \<br/>                f&quot;The search term: {to_be_searched.lower()} was not found in either the product name or description.&quot;<br/><span class="error">E           AssertionError: The search term: dress was not found in either the product name or description.</span><br/><span class="error">E           assert (&#x27;dress&#x27; in &#x27;faded short sleeve t-shirts&#x27; or &#x27;dress&#x27; in &quot;faded short sleeve t-shirt with high neckline. soft and stretchy material for a comfortable fit. accessorize with a straw hat and you&#x27;re ready for summer!&quot;)</span><br/><span class="error">E            +  where &#x27;dress&#x27; = &lt;built-in method lower of str object at 0x03CF3780&gt;()</span><br/><span class="error">E            +    where &lt;built-in method lower of str object at 0x03CF3780&gt; = &#x27;dress&#x27;.lower</span><br/><span class="error">E            +  and   &#x27;dress&#x27; = &lt;built-in method lower of str object at 0x03CF3780&gt;()</span><br/><span class="error">E            +    where &lt;built-in method lower of str object at 0x03CF3780&gt; = &#x27;dress&#x27;.lower</span><br/><br/>test_search_results.py:71: AssertionError[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="skipped results-table-row">
+        <tr>
+          <td class="col-result">Skipped</td>
+          <td class="col-name">test_cart.py::TestCart::test_add_items_to_cart_through_grid_view_and_verify_number_of_products_in_cart[25]</td>
+          <td class="col-duration">10.87</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>(&#x27;C:\\Users\\oxjoe\\PycharmProjects\\AutomationPractice\\tests\\test_cart.py&#x27;, 39, &#x27;Skipped: Invalid test data. The number of items on the page is 7 which is &lt; 25 (aka the test data that was inputted).&#x27;)[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:22 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="skipped results-table-row">
+        <tr>
+          <td class="col-result">Skipped</td>
+          <td class="col-name">test_cart.py::TestCart::test_add_items_to_cart_through_list_view_and_verify_number_of_products_in_cart[50]</td>
+          <td class="col-duration">10.32</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>(&#x27;C:\\Users\\oxjoe\\PycharmProjects\\AutomationPractice\\tests\\test_cart.py&#x27;, 39, &#x27;Skipped: Invalid test data. The number of items on the page is 7 which is &lt; 50 (aka the test data that was inputted).&#x27;)[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cart.py::TestCart::test_add_items_to_cart_through_grid_view_and_verify_number_of_products_in_cart[3]</td>
+          <td class="col-duration">13.82</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:22 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cart.py::TestCart::test_add_items_to_cart_through_grid_view_and_verify_number_of_products_in_cart[0]</td>
+          <td class="col-duration">10.89</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:22 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cart.py::TestCart::test_add_items_to_cart_through_grid_view_and_verify_number_of_products_in_cart[1]</td>
+          <td class="col-duration">12.57</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:22 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cart.py::TestCart::test_add_items_to_cart_through_list_view_and_verify_number_of_products_in_cart[0]</td>
+          <td class="col-duration">9.48</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cart.py::TestCart::test_add_items_to_cart_through_list_view_and_verify_number_of_products_in_cart[1]</td>
+          <td class="col-duration">9.62</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cart.py::TestCart::test_add_items_to_cart_through_list_view_and_verify_number_of_products_in_cart[3]</td>
+          <td class="col-duration">12.81</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cart.py::TestCart::test_total_count_of_items_matches_headers</td>
+          <td class="col-duration">8.59</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cart.py::TestCart::test_remove_items_from_cart_dropdown[3]</td>
+          <td class="col-duration">16.89</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cookies.py::TestCookies::test_corrupt_cookie_value_after_sign_in</td>
+          <td class="col-duration">13.20</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cookies.py::TestCookies::test_delete_cookies_after_sign_in</td>
+          <td class="col-duration">15.64</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_cookies.py::TestCookies::test_cookie_will_expire_at_some_point</td>
+          <td class="col-duration">13.29</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_search_results.py::TestSearchResults::test_search_bar_and_search_header_match[BLOUSE]</td>
+          <td class="col-duration">9.62</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_search_results.py::TestSearchResults::test_search_bar_and_search_header_match[shirt]</td>
+          <td class="col-duration">8.68</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_search_results.py::TestSearchResults::test_item_names_or_descriptions_contain_the_searched_term[top]</td>
+          <td class="col-duration">10.04</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_search_results.py::TestSearchResults::test_no_results_found[Men]</td>
+          <td class="col-duration">11.01</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_search_results.py::TestSearchResults::test_item_names_or_descriptions_contain_the_searched_term[shirt]</td>
+          <td class="col-duration">9.28</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_sign_in.py::TestSignIn::test_sign_in_success[xigoy27304@greenkic.com-xigoy27304-John Lennon]</td>
+          <td class="col-duration">12.10</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_sign_in.py::TestSignIn::test_sign_in_success[comonor619@moxkid.com-comonor619-Paul McCartney]</td>
+          <td class="col-duration">14.24</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_sign_in.py::TestSignIn::test_sign_in_failure[testing@test.com-invalid_password]</td>
+          <td class="col-duration">13.74</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw1] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_sign_in.py::TestSignIn::test_sign_in_failure[blah_test@blah1234.com-invalid_email]</td>
+          <td class="col-duration">12.96</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw3] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_sign_out.py::TestSignOut::test_sign_out_success</td>
+          <td class="col-duration">10.68</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw0] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">test_sign_out.py::TestSignOut::test_if_no_one_is_signed_in_then_sign_out_button_is_not_present</td>
+          <td class="col-duration">15.81</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/>[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe[gw2] win32 -- Python 3.8.5 C:\Users\oxjoe\PycharmProjects\AutomationPractice\venv\Scripts\python.exe<br/> -----------------------------Captured stdout setup------------------------------ <br/>INITIATING CHROME DRIVER.
+TEST IS STARTING.
+<br/> -----------------------------Captured stderr setup------------------------------ <br/>
+
+====== WebDriver manager ======
+Current google-chrome version is 91.0.4472
+Get LATEST driver version for 91.0.4472
+Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache
+<br/> -------------------------------Captured log setup------------------------------- <br/>INFO     WDM:logger.py:12 
+
+INFO     WDM:logger.py:12 ====== WebDriver manager ======
+INFO     WDM:logger.py:12 Current google-chrome version is 91.0.4472
+INFO     WDM:logger.py:12 Get LATEST driver version for 91.0.4472
+INFO     WDM:logger.py:12 Driver [C:\Users\oxjoe\.wdm\drivers\chromedriver\win32\91.0.4472.101\chromedriver.exe] found in cache<br/> ----------------------------Captured stdout teardown---------------------------- <br/>TEST HAS ENDED.
+<br/></div></td></tr></tbody></table></body></html>
