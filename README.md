@@ -34,7 +34,7 @@ Run one of the following commands in Terminal:
     python -m pytest --html=report.html --self-contained-html
     ```
 
-After pytest is finished running all the tests, an HTML report should be generated under the project working directory called *report.html*. If a previous report.html exists then it will be automatically overwritten.
+After pytest is finished running all the tests, an HTML report should be generated under the project working directory called *report.html*. If a previous *report.html* exists then it will be automatically overwritten.
 
 <u>**For PyCharm users**</u>
 
@@ -46,7 +46,7 @@ After pytest is finished running all the tests, an HTML report should be generat
 
 ![screenshot of expected report results](example_report_results_screenshot.png)
 
-**Click [me](https://htmlpreview.github.io/?https://github.com/oxjoe/AutomationPractice/blob/main/example_report.html) to see a live preview of the example_report.html by using htmlpreview.github.io.**
+**Click [here](https://htmlpreview.github.io/?https://github.com/oxjoe/AutomationPractice/blob/main/example_report.html) to see a live preview of the example_report.html. Thanks to htmlpreview.github.io!**
 
 ## Notes
 
