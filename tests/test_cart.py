@@ -70,8 +70,8 @@ class TestCart(Base):
             cart_popup_page.click_continue_shopping_button()
 
     # It may make more sense to split the parameterization into separate test cases, however since these are VERY
-    # similar scenarios I chose to group them into one. There is a condition will SKIP the test if you enter in more
-    # products that are currently on the page (e.g. see 25 in the fixture).
+    # similar scenarios I chose to group them into one. If one of the passed in numbers for the test data is > than
+    # the amount of products on the page, then pytest will skip that specific number (e.g. see 25 in the fixture).
     @pytest.mark.parametrize("num_of_items_to_add_to_cart", [0, 1, 3, 25])
     def test_add_items_to_cart_through_grid_view_and_verify_number_of_products_in_cart(self,
                                                                                        num_of_items_to_add_to_cart):

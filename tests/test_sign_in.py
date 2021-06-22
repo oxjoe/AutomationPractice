@@ -17,7 +17,7 @@ class TestSignIn(Base):
         driver = self.driver
         # Helper to sign the user in
         sign_in_helper(driver, email, password)
-        # Verifies the name on the top right after you sign in
+        # Verifies the name on the top right after a user signs in
         name_on_site = driver.find_element(By.CLASS_NAME, "account")
         assert name_on_site.text == name
         assert driver.title == "My account - My Store"

@@ -4,6 +4,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 
 class CartPopupPage:
+    """ This is the cart popup page that appears after an item is added to the cart """
     product_successfully_added = (By.CSS_SELECTOR, "#layer_cart > div.clearfix > div.layer_cart_product > h2")
     continue_shopping_button = (By.CSS_SELECTOR, "span[title='Continue shopping']")
     product_name = (By.CSS_SELECTOR, "#layer_cart #layer_cart_product_title")

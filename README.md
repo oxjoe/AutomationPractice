@@ -46,7 +46,7 @@ After pytest is finished running all the tests, an HTML report should be generat
 
 ![screenshot of expected report results](example_report_results_screenshot.png)
 
-**Click [here](https://htmlpreview.github.io/?https://github.com/oxjoe/AutomationPractice/blob/main/example_report.html) to see a live preview of the example_report.html. Thanks to htmlpreview.github.io!**
+**Click [here](https://htmlpreview.github.io/?https://github.com/oxjoe/AutomationPractice/blob/main/example_report.html) to see a live preview of the example_report.html (using htmlpreview.github.io).**
 
 ## Notes
 
