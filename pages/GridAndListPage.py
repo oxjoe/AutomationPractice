@@ -2,6 +2,7 @@ from selenium.webdriver.common.by import By
 
 
 class GridAndListPage:
+    """ This is the page where all the products are displayed in either grid or list view """
     products_count_on_top_of_grid = (By.CLASS_NAME, "product-count")
     product_list = (By.CSS_SELECTOR, "ul.product_list li.ajax_block_product")
 
